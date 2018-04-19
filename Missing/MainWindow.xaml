@@ -1,0 +1,57 @@
+﻿<Window x:Class="Missing.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Missing"
+        mc:Ignorable="d"
+        Title="Missing Members Lists"
+        SizeToContent="Manual">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="MinWidth" Value="50"/>
+            <Setter Property="Margin" Value="2,2,2,2"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinWidth" Value="200"/>
+            <Setter Property="Margin" Value="2,2,2,2"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinWidth" Value="70"/>
+            <Setter Property="Margin" Value="2,2,2,2"/>
+        </Style>        
+    </Window.Resources>
+    <Grid AllowDrop="True">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Cycling Ireland Members" Grid.Row="0"/>
+        <TextBox Name="mCyclingIreland" Grid.Row="1" Grid.ColumnSpan="2" MinWidth="200" MinHeight="20" AllowDrop="True"/>
+        <Button Content="..." Grid.Row="1" Grid.Column="2" Width="10" CommandParameter="CI" Name="mCIFileOpen"/>
+        <TextBlock Text="Text Numbers" Grid.Row="2"/>
+        <TextBox Name="mTextNumbers" Grid.Row="3" Grid.ColumnSpan="2" MinWidth="100" MinHeight="20" AllowDrop="True"/>
+        <Button Content="..." Grid.Row="3" Grid.Column="2" Width="10" CommandParameter="Text" Name="mTextFileOpen"/>
+        <TextBlock Text="Email List" Grid.Row="4"/>
+        <TextBox Name="mEmailList" Grid.Row="5" Grid.ColumnSpan="2" MinWidth="100" MinHeight="20" AllowDrop="True"/>
+        <Button Content="..." Grid.Row="5" Grid.Column="2" Width="10" CommandParameter="Email" Name="mEmailFileOpen"/>
+        
+        <ListView Grid.Row="6" Grid.ColumnSpan="5" Background="LemonChiffon" MinHeight="100" MinWidth="400" Grid.Column="0" Name="mListBox"  Margin="2,2,2,2"/>
+
+        <Button Name="mRun" Grid.Row="7" Content="Run" Grid.Column="4"/>
+    </Grid>
+</Window>
