@@ -19,11 +19,12 @@ namespace Missing
         public static RoutedCommand RunRoutedCommand = new RoutedCommand();
         public static RoutedCommand OpenFileRoutedCommand = new RoutedCommand();
 
-        enum MType { FirstName, Surname, Mobile, Email, Status, LicenceType, ValidTill };
+        enum MType { FirstName, Surname, Mobile, Email, Status, LicenceType, ValidTill, Category };
 
         IList<IDictionary<MType, string>> mCIMembers = new List<IDictionary<MType, string>>();
         IList<IDictionary<MType, string>> mTextMembers = new List<IDictionary<MType, string>>();
         IList<IDictionary<MType, string>> mEmailMembers = new List<IDictionary<MType, string>>();
+        IList<IDictionary<MType, string>> mGoogleListMembers = new List<IDictionary<MType, string>>();
 
         const string mLogFile = @"reports.txt";
 
@@ -73,6 +74,10 @@ namespace Missing
                     Title = "Select an excel Cycling Ireland members file";
                     Filter = "CSV files (*.xls)|*.xls|All files (*.*)|*.*";
                     break;
+                case "Google":
+                    Title = "Select a Goolge list members file";
+                    Filter = "CSV files (*.xls)|*.xls|All files (*.*)|*.*";
+                    break;
                 default:
                     return;
             }
@@ -112,6 +117,19 @@ namespace Missing
                 MessageBox.Show(string.Format("Failed to delete old log file {0}", mLogFile), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+
+            if ( (mCIMembers == null || mCIMembers.Any() == false) && File.Exists(mCyclingIreland.Text) )
+                mCIMembers = ReadCyclingIrelandMembers(mCyclingIreland.Text);
+
+            if ( (mTextMembers == null || mTextMembers.Any() == false) && File.Exists(mTextNumbers.Text) )
+                mTextMembers = ReadTextMembers(mTextNumbers.Text);
+
+            if ( (mEmailMembers == null || mEmailMembers.Any() == false) && File.Exists(mEmailList.Text) )
+                mEmailMembers = ReadEmailMembers(mEmailList.Text);
+
+            if ( (mGoogleListMembers == null || mGoogleListMembers.Any() == false) && File.Exists(mGoogleList.Text) )
+                mGoogleListMembers = ReadGoogleListMembers(mGoogleList.Text);
+
             mListBox.Items.Clear();
 
             FindMissingTextNumbers();
@@ -121,6 +139,10 @@ namespace Missing
             FindMissingEmailAddresses();
 
             FindNotRegisteredThisYear();
+
+            FindCiMembersNotInGoogleList();
+
+            FindGoogleListMembersNotInCI();
 
         }
 
@@ -153,6 +175,13 @@ namespace Missing
                 string FileName = (s as TextBox).Text;
                 if (File.Exists(FileName) && IsExcel(FileName) )
                     mCIMembers = ReadCyclingIrelandMembers(FileName);
+            };
+
+            mGoogleList.TextChanged += (s, e) =>
+            {
+                string FileName = (s as TextBox).Text;
+                if (File.Exists(FileName) && IsExcel(FileName))
+                    mGoogleListMembers = ReadGoogleListMembers(FileName);
             };
 
             mTextNumbers.PreviewDragOver += (s, e) =>
@@ -211,10 +240,10 @@ namespace Missing
             mCIFileOpen.Command = OpenFileRoutedCommand;
             mTextFileOpen.Command = OpenFileRoutedCommand;
 
-
-            mCyclingIreland.Text = @"C:\Users\Ger\Desktop\IMBRC\clubmembers.xls";
-            mEmailList.Text = @"C:\Users\Ger\Desktop\IMBRC\mail.chimp.export.csv";
-            mTextNumbers.Text = @"C:\Users\Ger\Desktop\IMBRC\exportedcontacts.txt";
+            mCyclingIreland.Text = @"C:\Users\Ger\Google Drive\IMBRC\Members\clubmembers.xls";
+            mEmailList.Text = @"C:\Users\Ger\Google Drive\IMBRC\Members\subscribed_members_export_9382c78e99.csv";
+            mTextNumbers.Text = @"C:\Users\Ger\Google Drive\IMBRC\Members\exportedcontacts.txt";
+            mGoogleList.Text = @"C:\Users\Ger\Google Drive\IMBRC\Members\Google Member List 2018.xls";
 
         }
 
@@ -395,44 +424,110 @@ namespace Missing
 
         }
 
+        private void FindCiMembersNotInGoogleList()
+        {
+            int Missing = 0;
+            mListBox.Items.Add("Registered members not in Google list");
+            IList<IDictionary<MType, string>> Members = new List<IDictionary<MType, string>>();
+            foreach (var Member in mCIMembers.Where(x => x[MType.Status] == "Registered" && string.IsNullOrEmpty(x[MType.LicenceType]) == false))
+            {
+                if (mGoogleListMembers.Any(x => x[MType.Surname] == Member[MType.Surname] && x[MType.Status] == "full member") == false)
+                {
+                    Missing++;
+                    string Text = string.Format("{0} {1} [ {2} ] {3}", Member[MType.FirstName], Member[MType.Surname], Member[MType.Mobile], Member[MType.LicenceType]);
+                    Members.Add(Member);
+                    mListBox.Items.Add(Text);
+                }
+            }
+
+            if (Missing == 0)
+            {
+                mListBox.Items.Add("No missing members");
+            }
+            else
+            {
+                mListBox.Items.Add(string.Format("{0} members not found in Google list", Missing));
+                Log(mLogFile, string.Format("{0} members not found in Google list", Missing));
+                foreach (IDictionary<MType, string> Member in Members)
+                    Log(mLogFile, string.Format("{0}, {1} {2},{3}", Member[MType.Mobile], Member[MType.FirstName], Member[MType.Surname], Member[MType.LicenceType]));
+            }
+        }
+
+        private void FindGoogleListMembersNotInCI()
+        {
+            int Missing = 0;
+            mListBox.Items.Add("Google list members not in CI list");
+            IList<IDictionary<MType, string>> Members = new List<IDictionary<MType, string>>();
+            foreach (var Member in mGoogleListMembers.Where(x => x[MType.Status] == "full member"))
+            {                
+                if (mCIMembers.Any(x => x[MType.Surname] == Member[MType.Surname]) == false)
+                {
+                    Missing++;
+                    string Text = string.Format("{0} {1} {2} {3}", Member[MType.FirstName], Member[MType.Surname], Member[MType.Category], Member[MType.Status]);
+                    Members.Add(Member);
+                    mListBox.Items.Add(Text);
+                }
+            }
+
+            if (Missing == 0)
+            {
+                mListBox.Items.Add("No missing members");
+            }
+            else
+            {
+                mListBox.Items.Add(string.Format("Google list {0} members not found in CI list", Missing));
+                Log(mLogFile, string.Format("Google list {0} members not found in CI list", Missing));
+                foreach (IDictionary<MType, string> Member in Members)
+                    Log(mLogFile, string.Format("{0} {1} {2} {3}", Member[MType.FirstName], Member[MType.Surname], Member[MType.Category], Member[MType.Status]));
+            }
+        }
+
         private IList<IDictionary<MType, string>> ReadTextMembers(string filename)
         {
-            IList<IDictionary<MType, string>> TextMembers = new List<IDictionary<MType, string>>();
-            if (IsCSVFile(filename))
+            try
             {
-                foreach ( string Line in File.ReadAllLines(filename))
+                IList<IDictionary<MType, string>> TextMembers = new List<IDictionary<MType, string>>();
+                if (IsCSVFile(filename))
                 {
-                    IDictionary<MType, string> MemberData = new Dictionary<MType, string>();
-                    string Normalised = Line.Replace("\"", "").Replace("+", "");
-
-                    string[] Tokens = Normalised.Split(',');
-
-                    double Number = 0;
-                    int n = 0;
-                    for (n = 0; n < Tokens.Length; n++)
+                    foreach (string Line in File.ReadAllLines(filename))
                     {
-                        if (double.TryParse(Tokens[n], out Number))
-                            break;
-                    }
-                    if ( Number > 0 )
-                    {                        
-                        String FullName = string.Empty;
-                        if (n > 0)
-                            FullName = Tokens[0];
-                        else if (Tokens.Length > 1)
-                            FullName = Tokens[1];
+                        IDictionary<MType, string> MemberData = new Dictionary<MType, string>();
+                        string Normalised = Line.Replace("\"", "").Replace("+", "");
 
-                        if (string.IsNullOrEmpty(FullName) == false)
+                        string[] Tokens = Normalised.Split(',');
+
+                        double Number = 0;
+                        int n = 0;
+                        for (n = 0; n < Tokens.Length; n++)
                         {
-                            MemberData.Add(MType.Mobile, NormaliseNumber(Number.ToString()));
-                            MemberData.Add(MType.FirstName, GetFirstname(FullName));
-                            MemberData.Add(MType.Surname, GetSurname(FullName));
-                            TextMembers.Add(MemberData);
+                            if (double.TryParse(Tokens[n], out Number))
+                                break;
+                        }
+                        if (Number > 0)
+                        {
+                            String FullName = string.Empty;
+                            if (n > 0)
+                                FullName = Tokens[0];
+                            else if (Tokens.Length > 1)
+                                FullName = Tokens[1];
+
+                            if (string.IsNullOrEmpty(FullName) == false)
+                            {
+                                MemberData.Add(MType.Mobile, NormaliseNumber(Number.ToString()));
+                                MemberData.Add(MType.FirstName, GetFirstname(FullName));
+                                MemberData.Add(MType.Surname, GetSurname(FullName));
+                                TextMembers.Add(MemberData);
+                            }
                         }
                     }
                 }
+                return TextMembers;
             }
-            return TextMembers;
+            catch (Exception Ex)
+            {
+                MessageBox.Show(Ex.Message.ToString(), "File Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
         }
 
         private string NormaliseNumber(string number)
@@ -464,73 +559,174 @@ namespace Missing
 
         private IList<IDictionary<MType, string>> ReadEmailMembers(string filename)
         {
-            IList<IDictionary<MType, string>> EmailMembers = new List<IDictionary<MType, string>>();
-            if (IsCSVFile(filename))
+            try
             {
-                string[] Lines = File.ReadAllLines(filename);
-
-                string[] Tokens = Lines[0].Replace("\"", "").Split(',');
-
-                IDictionary<MType, int> ColIndex = new Dictionary<MType, int>();
-
-                for ( int i=0 ; i<Tokens.Length ; i++ )
+                IList<IDictionary<MType, string>> EmailMembers = new List<IDictionary<MType, string>>();
+                if (IsCSVFile(filename))
                 {
-                    switch(Tokens[i])
+                    string[] Lines = File.ReadAllLines(filename);
+
+                    string[] Tokens = Lines[0].Replace("\"", "").Split(',');
+
+                    IDictionary<MType, int> ColIndex = new Dictionary<MType, int>();
+
+                    for (int i = 0; i < Tokens.Length; i++)
                     {
-                        case "Email Address":
-                            ColIndex.Add(MType.Email, i);
-                            break;
-                        case "First Name":
-                            ColIndex.Add(MType.FirstName, i);
-                            break;
-                        case "Last Name":
-                            ColIndex.Add(MType.Surname, i);
-                            break;
-                        case "Mobile Number":
-                            ColIndex.Add(MType.Mobile, i);
-                            break;
-                    }
-                }
-
-                if (ColIndex.Any() == false)
-                    return EmailMembers;
-
-                int Max = ColIndex.Values.Max();
-
-                foreach (string Line in Lines)
-                {
-                    IDictionary<MType, string> MemberData = new Dictionary<MType, string>();
-                    Tokens = Line.Split(',');
-                    if (Tokens.Length > Max)
-                    {
-                        foreach (KeyValuePair<MType, int> KV in ColIndex)
+                        switch (Tokens[i])
                         {
-                            String Value = Tokens[KV.Value];
-                            switch (KV.Key)
-                            {
-                                case MType.Mobile:
-                                    double Number = 0;
-                                    if (double.TryParse(Value, out Number))
-                                        Value = Number.ToString();
-                                    break;
-                                default:
-                                        Value = Value.ToLowerInvariant();
-                                    break;
-                            }
-                            MemberData.Add(KV.Key, Value);
+                            case "Email Address":
+                                ColIndex.Add(MType.Email, i);
+                                break;
+                            case "First Name":
+                                ColIndex.Add(MType.FirstName, i);
+                                break;
+                            case "Last Name":
+                                ColIndex.Add(MType.Surname, i);
+                                break;
+                            case "Mobile Number":
+                                ColIndex.Add(MType.Mobile, i);
+                                break;
                         }
+                    }
 
-                        EmailMembers.Add(MemberData);
+                    if (ColIndex.Any() == false)
+                        return EmailMembers;
+
+                    int Max = ColIndex.Values.Max();
+
+                    foreach (string Line in Lines)
+                    {
+                        IDictionary<MType, string> MemberData = new Dictionary<MType, string>();
+                        Tokens = Line.Split(',');
+                        if (Tokens.Length > Max)
+                        {
+                            foreach (KeyValuePair<MType, int> KV in ColIndex)
+                            {
+                                String Value = Tokens[KV.Value];
+                                switch (KV.Key)
+                                {
+                                    case MType.Mobile:
+                                        double Number = 0;
+                                        if (double.TryParse(Value, out Number))
+                                            Value = Number.ToString();
+                                        break;
+                                    default:
+                                        Value = Value.ToLowerInvariant();
+                                        break;
+                                }
+                                MemberData.Add(KV.Key, Value);
+                            }
+
+                            EmailMembers.Add(MemberData);
+                        }
                     }
                 }
+                return EmailMembers;
             }
-            return EmailMembers;
+            catch (Exception Ex)
+            {
+                MessageBox.Show(Ex.Message.ToString(), "File Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
         }
 
         private IList<IDictionary<MType, string>> ReadCyclingIrelandMembers(string filename)
         {
+            try
+            {
+                IList<IDictionary<MType, string>> CIMembers = new List<IDictionary<MType, string>>();
+                System.Data.DataTable XcelMembers = ReadExcel(filename);
+                if (XcelMembers != null && XcelMembers.Rows != null && XcelMembers.Rows.Count > 1)
+                {
+                    IDictionary<MType, int> ColumnIndex = new Dictionary<MType, int>();
+                    DataRow ColNames = XcelMembers.Rows[0];
+
+                    for (int i = 0; i < ColNames.ItemArray.Length; i++)
+                    {
+                        switch (ColNames[i].ToString())
+                        {
+                            case "Email Address":
+                                ColumnIndex.Add(MType.Email, i);
+                                break;
+                            case "Mobile Number":
+                                ColumnIndex.Add(MType.Mobile, i);
+                                break;
+                            case "CI Status":
+                                ColumnIndex.Add(MType.Status, i);
+                                break;
+                            case "Firstname":
+                                ColumnIndex.Add(MType.FirstName, i);
+                                break;
+                            case "Surname":
+                                ColumnIndex.Add(MType.Surname, i);
+                                break;
+                            case "Licence Type":
+                                ColumnIndex.Add(MType.LicenceType, i);
+                                break;
+                            case "Valid Till":
+                                ColumnIndex.Add(MType.ValidTill, i);
+                                break;
+                                /*
+                                                        case "Licence Type":
+                                                        case "Category":
+                                                        case "Licence Number":
+                                                        case "Valid Till":
+                                                        */
+                        }
+                    }
+
+                    for (int n = 1; n < XcelMembers.Rows.Count; n++)
+                    {
+                        DataRow RowData = XcelMembers.Rows[n];
+                        IDictionary<MType, string> MemberData = new Dictionary<MType, string>();
+
+                        foreach (KeyValuePair<MType, int> KV in ColumnIndex)
+                        {
+                            String Data = RowData[KV.Value].ToString().Trim();
+                            switch (KV.Key)
+                            {
+                                case MType.FirstName:
+                                case MType.Surname:
+                                case MType.Email:
+                                    Data = Data.ToLowerInvariant();
+                                    break;
+
+                                case MType.Mobile:
+                                    Data = Data.Replace("+", "").Replace("(", "").Replace(")", "").Replace(" ", "");
+                                    if (Data.StartsWith("00"))
+                                        Data = Data.Substring(2);
+                                    if (Data.StartsWith("353") && Data.Length > 7)
+                                        Data = Data.Substring(3);
+                                    if (Data.StartsWith("00"))
+                                        Data = Data.Substring(2);
+
+                                    double Number = 0;
+
+                                    if (double.TryParse(Data, out Number))
+                                        Data = Number.ToString();
+
+                                    break;
+                            }
+                            MemberData.Add(KV.Key, Data);
+                        }
+
+                        CIMembers.Add(MemberData);
+
+                    }
+                }
+                return CIMembers;
+            }
+            catch (Exception Ex)
+            {
+                MessageBox.Show(Ex.Message.ToString(), "File Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+
+        private IList<IDictionary<MType, string>> ReadGoogleListMembers(string filename)
+        {
             IList<IDictionary<MType, string>> CIMembers = new List<IDictionary<MType, string>>();
-            System.Data.DataTable XcelMembers = ReadExcel(filename);
+            System.Data.DataTable XcelMembers = ReadExcel(filename, 0);
             if (XcelMembers != null && XcelMembers.Rows != null && XcelMembers.Rows.Count > 1)
             {
                 IDictionary<MType, int> ColumnIndex = new Dictionary<MType, int>();
@@ -540,27 +736,22 @@ namespace Missing
                 {
                     switch (ColNames[i].ToString())
                     {
-                        case "Email Address":
-                            ColumnIndex.Add(MType.Email, i);
-                            break;
-                        case "Mobile Number":
-                            ColumnIndex.Add(MType.Mobile, i);
-                            break;
-                        case "CI Status":
-                            ColumnIndex.Add(MType.Status, i);
-                            break;
                         case "Firstname":
                             ColumnIndex.Add(MType.FirstName, i);
                             break;
                         case "Surname":
                             ColumnIndex.Add(MType.Surname, i);
                             break;
-                        case "Licence Type":
+                        case "CI Licence":
+                            ColumnIndex.Add(MType.Category, i);
+                            break;
+                        case "Club Category":
                             ColumnIndex.Add(MType.LicenceType, i);
                             break;
-                        case "Valid Till":
-                            ColumnIndex.Add(MType.ValidTill, i);
+                        case "Status":
+                            ColumnIndex.Add(MType.Status, i);
                             break;
+
                             /*
                                                     case "Licence Type":
                                                     case "Category":
@@ -583,23 +774,9 @@ namespace Missing
                             case MType.FirstName:
                             case MType.Surname:
                             case MType.Email:
+                            case MType.Status:
+                            case MType.Category:
                                 Data = Data.ToLowerInvariant();
-                                break;
-
-                            case MType.Mobile:
-                                Data = Data.Replace("+", "").Replace("(", "").Replace(")", "").Replace(" ", "");
-                                if (Data.StartsWith("00"))
-                                    Data = Data.Substring(2);
-                                if (Data.StartsWith("353") && Data.Length > 7)
-                                    Data = Data.Substring(3);
-                                if (Data.StartsWith("00"))
-                                    Data = Data.Substring(2);
-
-                                double Number = 0;
-
-                                if (double.TryParse(Data, out Number))
-                                    Data = Number.ToString();
-
                                 break;
                         }
                         MemberData.Add(KV.Key, Data);
@@ -607,7 +784,7 @@ namespace Missing
 
                     CIMembers.Add(MemberData);
 
-                }                
+                }
             }
             return CIMembers;
         }
@@ -627,27 +804,43 @@ namespace Missing
             return (ReadExcel(fileName) != null);
         }
 
-        System.Data.DataTable ReadExcel(string fileName)
-        {            
-            using (var stream = File.Open(fileName, FileMode.Open, FileAccess.Read))
+        System.Data.DataTable ReadExcel(string fileName, int? sheet=null)
+        {
+            try
             {
-                // Auto-detect format, supports:
-                //  - Binary Excel files (2.0-2003 format; *.xls)
-                //  - OpenXml Excel files (2007 format; *.xlsx)
-                using (IExcelDataReader Reader = ExcelReaderFactory.CreateReader(stream))
+                using (var stream = File.Open(fileName, FileMode.Open, FileAccess.Read))
                 {
-                    var result = Reader.AsDataSet();
-
-                    if (result.Tables != null && result.Tables.Count > 0)
+                    // Auto-detect format, supports:
+                    //  - Binary Excel files (2.0-2003 format; *.xls)
+                    //  - OpenXml Excel files (2007 format; *.xlsx)
+                    using (IExcelDataReader Reader = ExcelReaderFactory.CreateReader(stream))
                     {
-                        foreach (var Table in result.Tables )
+                        var result = Reader.AsDataSet();
+                        int SheetIndex = 0;
+                        if (result.Tables != null && result.Tables.Count > 0)
                         {
-                            if (Table.ToString() == @"Club Members + Recent Club Fee")
-                                return Table as System.Data.DataTable;
+                            foreach (var Table in result.Tables)
+                            {
+                                if (sheet != null)
+                                {
+                                    if ((int)sheet == SheetIndex)
+                                        return Table as System.Data.DataTable;
+                                }
+                                else if (Table.ToString() == @"Club Members + Recent Club Fee")
+                                {
+                                    return Table as System.Data.DataTable;
+                                }
+                                SheetIndex++;
+                            }
                         }
+                        // The result of each spreadsheet is in result.Tables
                     }
-                    // The result of each spreadsheet is in result.Tables
+                    return null;
                 }
+            }
+            catch ( Exception Ex)
+            {
+                MessageBox.Show(Ex.Message.ToString(), "File Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return null;
             }
         }

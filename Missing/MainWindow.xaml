@@ -36,6 +36,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -49,9 +51,14 @@
         <TextBlock Text="Email List" Grid.Row="4"/>
         <TextBox Name="mEmailList" Grid.Row="5" Grid.ColumnSpan="2" MinWidth="100" MinHeight="20" AllowDrop="True"/>
         <Button Content="..." Grid.Row="5" Grid.Column="2" Width="10" CommandParameter="Email" Name="mEmailFileOpen"/>
-        
-        <ListView Grid.Row="6" Grid.ColumnSpan="5" Background="LemonChiffon" MinHeight="100" MinWidth="400" Grid.Column="0" Name="mListBox"  Margin="2,2,2,2"/>
 
-        <Button Name="mRun" Grid.Row="7" Content="Run" Grid.Column="4"/>
+        <TextBlock Text="Google List" Grid.Row="6"/>
+        <TextBox Name="mGoogleList" Grid.Row="7" Grid.ColumnSpan="2" MinWidth="100" MinHeight="20" AllowDrop="True"/>
+        <Button Content="..." Grid.Row="7" Grid.Column="2" Width="10" CommandParameter="Google" Name="mGoogleListFileOpen"/>
+
+
+        <ListView Grid.Row="8" Grid.ColumnSpan="5" Background="LemonChiffon" MinHeight="100" MinWidth="400" Grid.Column="0" Name="mListBox"  Margin="2,2,2,2"/>
+
+        <Button Name="mRun" Grid.Row="9" Content="Run" Grid.Column="4"/>
     </Grid>
 </Window>
